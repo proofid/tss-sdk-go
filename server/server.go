@@ -70,7 +70,7 @@ func (s Server) urlFor(resource, path string) string {
 		path = strings.TrimLeft(path, "/")
 		fallthrough
 	default:
-		return fmt.Sprintf("%s/%s/%s/%s", baseURL, s.apiPathURI, strings.Trim(resource, "/"), path)
+		return fmt.Sprintf("%s/%s/%s/%s", strings.Trim(baseURL, "/"), strings.Trim(s.apiPathURI, "/"), strings.Trim(resource, "/"), path)
 	}
 }
 

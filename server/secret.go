@@ -27,24 +27,28 @@ type SecretField struct {
 	IsFile, IsNotes, IsPassword                            bool
 }
 
-// Secret gets the secret with id from the Secret Server of the given tenant
-func (s Server) Secret(id int) (*Secret, error) {
-	return s.getSecret(strconv.Itoa(id))
-}
+// Secret gets the secret with the given identifier from the Secret Server.
+// The identifier is expected to be either an int or a string. If an int,
+// this is understood to be the secret's numeric ID. If a string, it is
+// interpreted as the secret's folder path and secret name, eg:
+// "/some/folder/path/SomeSecretName"
+func (s Server) Secret(id interface{}) (*Secret, error) {
+	var identifierPath string
+	switch idType := id.(type) {
+	case int:
+		identifierPath = strconv.Itoa(id.(int))
+	case string:
+		identifierPath = "0?secretPath=" + url.QueryEscape(id.(string))
+	default:
+		log.Printf("[DEBUG] unrecognized id type: %s", idType)
+		return nil, fmt.Errorf("unrecognized id type: %s", idType)
+	}
 
-// SecretByPath gets the secret with the given secret path from the Secret
-// Server of the given tenant. A secret path includes the secret's fully
-// qualified folder path and name, and begins with a leading slash.
-func (s Server) SecretByPath(secretPath string) (*Secret, error) {
-	return s.getSecret("0?secretPath=" + url.QueryEscape(secretPath))
-}
-
-func (s Server) getSecret(secretIdentifier string) (*Secret, error) {
 	secret := new(Secret)
 
-	if data, err := s.accessResource("GET", resource, secretIdentifier, nil); err == nil {
+	if data, err := s.accessResource("GET", resource, identifierPath, nil); err == nil {
 		if err = json.Unmarshal(data, secret); err != nil {
-			log.Printf("[DEBUG] error parsing response from /%s/%s: %q", resource, secretIdentifier, data)
+			log.Printf("[DEBUG] error parsing response from /%s/%s: %q", resource, identifierPath, data)
 			return nil, err
 		}
 	} else {

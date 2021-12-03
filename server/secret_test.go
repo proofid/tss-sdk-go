@@ -54,7 +54,7 @@ func TestSecret(t *testing.T) {
 	if path == "" {
 		s, err = tss.Secret(id)
 	} else {
-		s, err = tss.SecretByPath(path)
+		s, err = tss.Secret(path)
 	}
 
 	if err != nil {

@@ -68,7 +68,7 @@ tss := server.New(server.Configuration{
 })
 s, err := tss.Secret(1)
 // Or alternately...
-s, err := tss.SecretByPath("/path/to/my/secret/secretName")
+s, err := tss.Secret("/some/folder/path/SomeSecretName")
 
 if err != nil {
     log.Fatal("failure calling server.Secret", err)
