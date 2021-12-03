@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/url"
 	"strconv"
 )
 
@@ -28,11 +29,22 @@ type SecretField struct {
 
 // Secret gets the secret with id from the Secret Server of the given tenant
 func (s Server) Secret(id int) (*Secret, error) {
+	return s.getSecret(strconv.Itoa(id))
+}
+
+// SecretByPath gets the secret with the given secret path from the Secret
+// Server of the given tenant. A secret path includes the secret's fully
+// qualified folder path and name, and begins with a leading slash.
+func (s Server) SecretByPath(secretPath string) (*Secret, error) {
+	return s.getSecret("0?secretPath=" + url.QueryEscape(secretPath))
+}
+
+func (s Server) getSecret(secretIdentifier string) (*Secret, error) {
 	secret := new(Secret)
 
-	if data, err := s.accessResource("GET", resource, strconv.Itoa(id), nil); err == nil {
+	if data, err := s.accessResource("GET", resource, secretIdentifier, nil); err == nil {
 		if err = json.Unmarshal(data, secret); err != nil {
-			log.Printf("[DEBUG] error parsing response from /%s/%d: %q", resource, id, data)
+			log.Printf("[DEBUG] error parsing response from /%s/%s: %q", resource, secretIdentifier, data)
 			return nil, err
 		}
 	} else {
@@ -43,7 +55,7 @@ func (s Server) Secret(id int) (*Secret, error) {
 	// (dummy) ItemValue, so as to make the process transparent to the caller
 	for index, element := range secret.Fields {
 		if element.FileAttachmentID != 0 {
-			path := fmt.Sprintf("%d/fields/%s", id, element.Slug)
+			path := fmt.Sprintf("%d/fields/%s", secret.ID, element.Slug)
 
 			if data, err := s.accessResource("GET", resource, path, nil); err == nil {
 				secret.Fields[index].ItemValue = string(data)

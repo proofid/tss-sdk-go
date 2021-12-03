@@ -22,12 +22,15 @@ func TestSecret(t *testing.T) {
 				Username: os.Getenv("TSS_USERNAME"),
 				Password: os.Getenv("TSS_PASSWORD"),
 			},
+			// Expecting either the tenant or URL to be set
 			Tenant: os.Getenv("TSS_TENANT"),
+			ServerURL: os.Getenv("TSS_SERVER_URL"),
 		}
 	}
 
 	id := 1
 	idFromEnv := os.Getenv("TSS_SECRET_ID")
+	path := os.Getenv("TSS_SECRET_PATH")
 
 	if idFromEnv != "" {
 		var err error
@@ -47,7 +50,12 @@ func TestSecret(t *testing.T) {
 		return
 	}
 
-	s, err := tss.Secret(id)
+	var s *Secret
+	if path == "" {
+		s, err = tss.Secret(id)
+	} else {
+		s, err = tss.SecretByPath(path)
+	}
 
 	if err != nil {
 		t.Error("calling secrets.Secret:", err)

@@ -48,7 +48,9 @@ tss := New(*config)
 ## Test
 
 The unit test tries to read the secret with ID `1` and extract the `password`
-field from it.
+field from it. Alternately, you may set either `TSS_SECRET_ID` or `TSS_SECRET_PATH`
+as environment variables to test a different secret either by its numeric ID
+or by its folder path and name.
 
 ## Use
 
@@ -56,11 +58,17 @@ Define a `Configuration`, use it to create an instance of `Server` and get a `Se
 
 ```golang
 tss := server.New(server.Configuration{
-    Username: os.Getenv("TSS_API_USERNAME"),
-    Password: os.Getenv("TSS_API_PASSWORD"),
-    Tenant:   os.Getenv("TSS_API_TENANT"),
+    Credentials: UserCredential{
+        Username: os.Getenv("TSS_API_USERNAME"),
+        Password: os.Getenv("TSS_API_PASSWORD"),
+    }
+    // Expecting either the tenant or URL to be set
+    Tenant: os.Getenv("TSS_API_TENANT"),
+    ServerURL: os.Getenv("TSS_SERVER_URL"),
 })
 s, err := tss.Secret(1)
+// Or alternately...
+s, err := tss.SecretByPath("/path/to/my/secret/secretName")
 
 if err != nil {
     log.Fatal("failure calling server.Secret", err)
