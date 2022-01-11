@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// TestSecret tests Secret
+// TestSecret tests Secret. Referred to as "Test #1" in the README.
 func TestSecret(t *testing.T) {
 	tss, err := initServer()
 	if err != nil {
@@ -41,7 +41,8 @@ func TestSecret(t *testing.T) {
 	}
 }
 
-// TestSecretCRUD tests the creation, read, update, and delete of a Secret
+// TestSecretCRUD tests the creation, read, update, and delete of a Secret.
+// Referred to as "Test #2" in the README.
 func TestSecretCRUD(t *testing.T) {
 
 	// Initialize
@@ -112,6 +113,148 @@ func TestSecretCRUD(t *testing.T) {
 	if s != nil { t.Errorf("deleted secret with id '%d' returned from read", sc.ID) }
 }
 
+// TestSecretCRUDForSSHTemplate tests the creation, read, update, and delete
+// of a Secret which uses an SSH key template, that is, a template with extended
+// mappings that support SSH keys. Referred to as "Test #3" in the README.
+func TestSecretCRUDForSSHTemplate(t *testing.T) {
+
+	// Initialize
+	tss, err := initServer()
+	if err != nil {
+		t.Error("configuring the Server:", err)
+		return
+	}
+	siteId := initIntegerFromEnv("TSS_SITE_ID", t)
+	folderId := initIntegerFromEnv("TSS_FOLDER_ID", t)
+	templateId := initIntegerFromEnv("TSS_SSH_KEY_TEMPLATE_ID", t)
+	publicKeyFieldId := initIntegerFromEnv("TSS_SSH_PUBLIC_FIELD_ID", t)
+	privateKeyFieldId := initIntegerFromEnv("TSS_SSH_PRIVATE_FIELD_ID", t)
+	passphraseFieldId := initIntegerFromEnv("TSS_SSH_PASSPHRASE_FIELD_ID", t)
+	if siteId < 0 || folderId < 0 || templateId < 0 || publicKeyFieldId < 0 || privateKeyFieldId < 0 || passphraseFieldId < 0 {
+		return
+	}
+
+	// Test creation of a new secret
+	refSecret := new(Secret)
+	refSecret.Name = "Test SSH Key Secret"
+	refSecret.SiteID = siteId
+	refSecret.FolderID = folderId
+	refSecret.SecretTemplateID = templateId
+	refSecret.SshKeyArgs = &SshKeyArgs{}
+	refSecret.SshKeyArgs.GenerateSshKeys = true
+	refSecret.SshKeyArgs.GeneratePassphrase = true
+	refSecret.Fields = make([]SecretField, 2)
+	refSecret.Fields[0].FieldID = publicKeyFieldId
+	refSecret.Fields[0].Filename = "" // Let the server generate the name
+	refSecret.Fields[1].FieldID = privateKeyFieldId
+	refSecret.Fields[1].Filename = "My Private Key.pem"
+	sc, err := tss.CreateSecret(*refSecret)
+	if err != nil { t.Error("calling server.CreateSecret:", err); return }
+	if sc == nil { t.Error("created secret data is nil"); return }
+	if !validate("created secret name", "Test SSH Key Secret", sc.Name, t) { return }
+	if !validate("created secret folder id", folderId, sc.FolderID, t) { return }
+	if !validate("created secret template id", templateId, sc.SecretTemplateID, t) { return }
+	if !validate("created secret site id", siteId, sc.SiteID, t) { return }
+	if publicKeyField := getField(sc, publicKeyFieldId); publicKeyField != nil {
+		if !validate("created secret public key field is a file field", true, publicKeyField.IsFile, t) { return }
+		if !validate("created secret public key field has a generated value", true, len(publicKeyField.ItemValue) > 100, t) { return }
+		if !validate("created secret public key field has a generated file name", publicKeyField.FieldName, publicKeyField.Filename, t) { return }
+	} else {
+		t.Errorf("created secret does not have a public key field at the given field id '%d':", publicKeyFieldId)
+		return
+	}
+	if privateKeyField := getField(sc, privateKeyFieldId); privateKeyField != nil {
+		if !validate("created secret private key field is a file field", true, privateKeyField.IsFile, t) { return }
+		if !validate("created secret private key field has a generated value", true, len(privateKeyField.ItemValue) > 100, t) { return }
+		if !validate("created secret private key field has the given file name", "My Private Key.pem", privateKeyField.Filename, t) { return }
+	} else {
+		t.Errorf("created secret does not have a private key field at the given field id '%d':", privateKeyFieldId)
+		return
+	}
+	if passphraseField := getField(sc, passphraseFieldId); passphraseField != nil {
+		if !validate("created secret passphrase field is a password field", true, passphraseField.IsPassword, t) { return }
+		if !validate("created secret passphrase field has a value", true, len(passphraseField.ItemValue) > 10, t) { return }
+	} else {
+		t.Errorf("created secret does not have a passphrase field at the given field id '%d':", passphraseFieldId)
+		return
+	}
+
+	// Test the read of the new secret
+	sr, err := tss.Secret(sc.ID)
+	if err != nil { t.Error("calling server.Secret:", err); return }
+	if sr == nil { t.Error("read secret data is nil"); return }
+	if !validate("read secret name", "Test SSH Key Secret", sr.Name, t) { return }
+	if !validate("read secret folder id", folderId, sr.FolderID, t) { return }
+	if !validate("read secret template id", templateId, sr.SecretTemplateID, t) { return }
+	if !validate("read secret site id", siteId, sr.SiteID, t) { return }
+	if publicKeyField := getField(sr, publicKeyFieldId); publicKeyField != nil {
+		if !validate("read secret public key field is a file field", true, publicKeyField.IsFile, t) { return }
+		if !validate("read secret public key field has a value", true, len(publicKeyField.ItemValue) > 100, t) { return }
+		if !validate("read secret public key field has a generated file name", publicKeyField.FieldName, publicKeyField.Filename, t) { return }
+	} else {
+		t.Errorf("read secret does not have a public key field at the given field id '%d':", publicKeyFieldId)
+		return
+	}
+	if privateKeyField := getField(sr, privateKeyFieldId); privateKeyField != nil {
+		if !validate("read secret private key field is a file field", true, privateKeyField.IsFile, t) { return }
+		if !validate("read secret private key field has a value", true, len(privateKeyField.ItemValue) > 100, t) { return }
+		if !validate("read secret private key field has the given file name", "My Private Key.pem", privateKeyField.Filename, t) { return }
+	} else {
+		t.Errorf("read secret does not have a private key field at the given field id '%d':", privateKeyFieldId)
+		return
+	}
+	if passphraseField := getField(sr, passphraseFieldId); passphraseField != nil {
+		if !validate("read secret passphrase field is a password field", true, passphraseField.IsPassword, t) { return }
+		if !validate("read secret passphrase field has a value", true, len(passphraseField.ItemValue) > 10, t) { return }
+	} else {
+		t.Errorf("read secret does not have a passphrase field at the given field id '%d':", passphraseFieldId)
+		return
+	}
+
+	// Test the update of the new secret
+	sc.Name = sc.Name + " (Updated)"
+	sc.SshKeyArgs = nil
+	sc.Fields[0].Filename = "New Filename.txt"
+	su, err := tss.UpdateSecret(*sc)
+	if err != nil { t.Error("calling server.UpdateSecret:", err); return }
+	if su == nil { t.Error("updated secret data is nil"); return }
+	if !validate("updated secret name", "Test SSH Key Secret (Updated)", su.Name, t) { return }
+	if !validate("updated secret folder id", folderId, su.FolderID, t) { return }
+	if !validate("updated secret template id", templateId, su.SecretTemplateID, t) { return }
+	if !validate("updated secret site id", siteId, su.SiteID, t) { return }
+	if publicKeyField := getField(su, publicKeyFieldId); publicKeyField != nil {
+		if !validate("updated secret public key field is a file field", true, publicKeyField.IsFile, t) { return }
+		if !validate("updated secret public key field has a value", true, len(publicKeyField.ItemValue) > 100, t) { return }
+		if !validate("updated secret public key field has the given file name", "New Filename.txt", publicKeyField.Filename, t) { return }
+	} else {
+		t.Errorf("updated secret does not have a public key field at the given field id '%d':", publicKeyFieldId)
+		return
+	}
+	if privateKeyField := getField(su, privateKeyFieldId); privateKeyField != nil {
+		if !validate("updated secret private key field is a file field", true, privateKeyField.IsFile, t) { return }
+		if !validate("updated secret private key field has a value", true, len(privateKeyField.ItemValue) > 100, t) { return }
+		if !validate("updated secret private key field has the given file name", "My Private Key.pem", privateKeyField.Filename, t) { return }
+	} else {
+		t.Errorf("updated secret does not have a private key field at the given field id '%d':", privateKeyFieldId)
+		return
+	}
+	if passphraseField := getField(su, passphraseFieldId); passphraseField != nil {
+		if !validate("updated secret passphrase field is a password field", true, passphraseField.IsPassword, t) { return }
+		if !validate("updated secret passphrase field has a value", true, len(passphraseField.ItemValue) > 10, t) { return }
+	} else {
+		t.Errorf("updated secret does not have a passphrase field at the given field id '%d':", passphraseFieldId)
+		return
+	}
+
+	// Test the deletion of the new secret
+	err = tss.DeleteSecret(sc.ID)
+	if err != nil { t.Error("calling server.DeleteSecret:", err); return }
+
+	// Test read of the deleted secret fails
+	s, err := tss.Secret(sc.ID)
+	if s != nil { t.Errorf("deleted secret with id '%d' returned from read", sc.ID) }
+}
+
 func initServer() (*Server, error) {
 	var config *Configuration
 
@@ -155,4 +298,11 @@ func validate(label string, expected interface{}, found interface{}, t *testing.
 		return false
 	}
 	return true
+}
+
+func getField(secret *Secret, fieldId int) *SecretField {
+	for _, field := range secret.Fields {
+		if field.FieldID == fieldId { return &field }
+	}
+	return nil
 }
