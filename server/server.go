@@ -87,7 +87,7 @@ func (s Server) accessResource(method, resource, path string, input interface{})
 	default:
 		message := "unknown resource"
 
-		log.Printf("[DEBUG] %s: %s", message, resource)
+		log.Printf("[ERROR] %s: %s", message, resource)
 		return nil, fmt.Errorf(message)
 	}
 
@@ -97,7 +97,7 @@ func (s Server) accessResource(method, resource, path string, input interface{})
 		if data, err := json.Marshal(input); err == nil {
 			body = bytes.NewBuffer(data)
 		} else {
-			log.Print("[DEBUG] marshaling the request body to JSON:", err)
+			log.Print("[ERROR] marshaling the request body to JSON:", err)
 			return nil, err
 		}
 	}
@@ -105,14 +105,14 @@ func (s Server) accessResource(method, resource, path string, input interface{})
 	req, err := http.NewRequest(method, s.urlFor(resource, path), body)
 
 	if err != nil {
-		log.Printf("[DEBUG] creating req: %s /%s/%s: %s", method, resource, path, err)
+		log.Printf("[ERROR] creating req: %s /%s/%s: %s", method, resource, path, err)
 		return nil, err
 	}
 
 	accessToken, err := s.getAccessToken()
 
 	if err != nil {
-		log.Print("[DEBUG] error getting accessToken:", err)
+		log.Print("[ERROR] error getting accessToken:", err)
 		return nil, err
 	}
 
@@ -140,7 +140,7 @@ func (s Server) uploadFile(secretId int, fileField SecretField) error {
 	// Fetch the access token
 	accessToken, err := s.getAccessToken()
 	if err != nil {
-		log.Print("[DEBUG] error getting accessToken:", err)
+		log.Print("[ERROR] error getting accessToken:", err)
 		return err
 	}
 
@@ -174,7 +174,7 @@ func (s Server) uploadFile(secretId int, fileField SecretField) error {
 	}
 	req.Header.Add("Authorization", "Bearer " + accessToken)
 	req.Header.Set("Content-Type", multipartWriter.FormDataContentType())
-	log.Printf("[DEBUG] calling PUT %s", req.URL.String())
+	log.Printf("[DEBUG] uploading file with PUT %s", req.URL.String())
 	_, _, err = handleResponse((&http.Client{}).Do(req))
 
 	return err
@@ -191,7 +191,7 @@ func (s Server) getAccessToken() (string, error) {
 	data, _, err := handleResponse(http.Post(s.urlFor("token", ""), "application/x-www-form-urlencoded", body))
 
 	if err != nil {
-		log.Print("[DEBUG] grant response error:", err)
+		log.Print("[ERROR] grant response error:", err)
 		return "", err
 	}
 
@@ -203,7 +203,7 @@ func (s Server) getAccessToken() (string, error) {
 	}{}
 
 	if err = json.Unmarshal(data, &grant); err != nil {
-		log.Print("[INFO] parsing grant response:", err)
+		log.Print("[ERROR] parsing grant response:", err)
 		return "", err
 	}
 	return grant.AccessToken, nil
