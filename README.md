@@ -140,9 +140,6 @@ below. It then reads the secret from the server, validates its values, updates i
 | TSS_SITE_ID                 | The numeric ID of the distributed engine site                                                                                     |
 | TSS_FOLDER_ID               | The numeric ID of the folder where the secret will be created                                                                     |
 | TSS_SSH_KEY_TEMPLATE_ID     | The numeric ID of the template that defines the secret's fields. This template must have extended mappings that support SSH keys. |
-| TSS_SSH_PUBLIC_FIELD_ID     | The numeric ID of the field that contains the generated public key.                                                               |
-| TSS_SSH_PRIVATE_FIELD_ID    | The numeric ID of the field that contains the generated private key.                                                              |
-| TSS_SSH_PASSPHRASE_FIELD_ID | The numeric ID of the field that contains the generated passphrase for the private key.                                           |
 
 ### Test #4 - Password Generation
 Retrieves the template indicated in the environment variable below, iterates its fields, and 

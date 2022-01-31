@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strconv"
 	"testing"
 )
@@ -72,6 +73,7 @@ func TestSecretCRUD(t *testing.T) {
 		t.Errorf("Unable to find a password field on the secret template with the given id '%d'", templateId)
 		return
 	}
+	t.Logf("Using field ID '%d' for the password field on the template with ID '%d'", fieldId, templateId)
 
 	// Test creation of a new secret
 	refSecret := new(Secret)
@@ -141,12 +143,40 @@ func TestSecretCRUDForSSHTemplate(t *testing.T) {
 	siteId := initIntegerFromEnv("TSS_SITE_ID", t)
 	folderId := initIntegerFromEnv("TSS_FOLDER_ID", t)
 	templateId := initIntegerFromEnv("TSS_SSH_KEY_TEMPLATE_ID", t)
-	publicKeyFieldId := initIntegerFromEnv("TSS_SSH_PUBLIC_FIELD_ID", t)
-	privateKeyFieldId := initIntegerFromEnv("TSS_SSH_PRIVATE_FIELD_ID", t)
-	passphraseFieldId := initIntegerFromEnv("TSS_SSH_PASSPHRASE_FIELD_ID", t)
-	if siteId < 0 || folderId < 0 || templateId < 0 || publicKeyFieldId < 0 || privateKeyFieldId < 0 || passphraseFieldId < 0 {
+	publicKeyFieldId := -1
+	privateKeyFieldId := -1
+	passphraseFieldId := -1
+	if siteId < 0 || folderId < 0 || templateId < 0 {
 		return
 	}
+
+	// Retrieve the template and make a best-effort attempt to find
+	// the fields related to SSH key generation
+	fileFields := make([]SecretTemplateField, 0)
+	passwordFields := make([]SecretTemplateField, 0)
+	refSecretTemplate, err := tss.SecretTemplate(templateId)
+	if err != nil { t.Error("calling server.SecretTemplate:", err); return }
+	for _, field := range refSecretTemplate.Fields {
+		if field.IsFile { fileFields = append(fileFields, field) }
+		if field.IsPassword { passwordFields = append(passwordFields, field) }
+	}
+	if len(fileFields) != 2 || len(passwordFields) != 1 {
+		t.Errorf("Unclear which fields are related to SSH key generation on the secret template with given id " +
+			"'%d' as there are %d file fields and %d password fields", templateId, len(fileFields), len(passwordFields))
+		return
+	}
+	publicRegex :=regexp.MustCompile("(?i)public")
+	privateRegex :=regexp.MustCompile("(?i)private")
+	if publicRegex.MatchString(fileFields[0].FieldSlugName) || privateRegex.MatchString(fileFields[1].FieldSlugName) {
+		publicKeyFieldId = fileFields[0].SecretTemplateFieldID
+		privateKeyFieldId = fileFields[1].SecretTemplateFieldID
+	} else {
+		publicKeyFieldId = fileFields[1].SecretTemplateFieldID
+		privateKeyFieldId = fileFields[0].SecretTemplateFieldID
+	}
+	passphraseFieldId = passwordFields[0].SecretTemplateFieldID
+	t.Logf("Using the following field IDs on the template with ID '%d'. public key id: %d, private key id: " +
+		"%d, passphrase id: %d", templateId, publicKeyFieldId, privateKeyFieldId, passphraseFieldId)
 
 	// Test creation of a new secret
 	refSecret := new(Secret)
