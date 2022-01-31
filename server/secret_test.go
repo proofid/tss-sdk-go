@@ -54,8 +54,22 @@ func TestSecretCRUD(t *testing.T) {
 	siteId := initIntegerFromEnv("TSS_SITE_ID", t)
 	folderId := initIntegerFromEnv("TSS_FOLDER_ID", t)
 	templateId := initIntegerFromEnv("TSS_TEMPLATE_ID", t)
-	fieldId := initIntegerFromEnv("TSS_FIELD_ID", t)
-	if siteId < 0 || folderId < 0 || templateId < 0 || fieldId < 0 {
+	fieldId := -1
+	if siteId < 0 || folderId < 0 || templateId < 0 {
+		return
+	}
+
+	// Retrieve the template and find the first password field
+	refSecretTemplate, err := tss.SecretTemplate(templateId)
+	if err != nil { t.Error("calling server.SecretTemplate:", err); return }
+	for _, field := range refSecretTemplate.Fields {
+		if field.IsPassword {
+			fieldId = field.SecretTemplateFieldID
+			break
+		}
+	}
+	if fieldId < 0 {
+		t.Errorf("Unable to find a password field on the secret template with the given id '%d'", templateId)
 		return
 	}
 

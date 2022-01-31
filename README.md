@@ -130,7 +130,6 @@ it.
 | TSS_SITE_ID     | The numeric ID of the distributed engine site                                 |
 | TSS_FOLDER_ID   | The numeric ID of the folder where the secret will be created                 |
 | TSS_TEMPLATE_ID | The numeric ID of the template that defines the secret's fields               |
-| TSS_FIELD_ID    | The numeric ID of a field on the template that happens to be a password field |
 
 ### Test #3 - Perform CRUD for an SSH Key Secret
 Creates a secret with generated SSH keys using the values passed in the environment variables 
