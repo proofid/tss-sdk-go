@@ -77,10 +77,11 @@ func (s Server) CreateSecret(secret Secret) (*Secret, error) {
 
 func (s Server) UpdateSecret(secret Secret) (*Secret, error) {
 	if secret.SshKeyArgs != nil && (secret.SshKeyArgs.GenerateSshKeys || secret.SshKeyArgs.GeneratePassphrase) {
-		log.Printf("[WARN] SSH key and passphrase generation are ignored in updating the secret named '%s'. " +
-			"SSH generation is only supported during secret creation", secret.Name)
-		secret.SshKeyArgs = nil
+		err := fmt.Errorf("[ERROR] SSH key and passphrase generation is only supported during secret creation. " +
+			"Could not update the secret named '%s'", secret.Name)
+		return nil, err
 	}
+	secret.SshKeyArgs = nil
 	return s.writeSecret(secret, "PUT", strconv.Itoa(secret.ID))
 }
 
