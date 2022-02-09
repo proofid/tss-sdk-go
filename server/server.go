@@ -150,7 +150,7 @@ func (s Server) uploadFile(secretId int, fileField SecretField) error {
 	if filename == "" {
 		filename = "File.txt"
 		log.Printf("[DEBUG] field has no filename, setting its filename to '%s'", filename)
-	} else if match, _ := regexp.Match("^[^.].*\\.\\w+$", []byte(filename)); !match {
+	} else if match, _ := regexp.Match("[^.]+\\.\\w+$", []byte(filename)); !match {
 		filename = filename + ".txt"
 		log.Printf("[DEBUG] field has no filename extension, setting its filename to '%s'", filename)
 	}
